@@ -1,0 +1,20 @@
+server:
+    port: 12000
+swagger:
+  enabled: true
+  title: "Fabric Client Application"
+spring:
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/explorer_gel?createDatabaseIfNotExist=true&characterEncoding=utf8&useSSL=false&autoReconnect=true&failOver
+        username: root
+        password: Energy@123456
+    jackson:
+        time-zone: GMT+8
+    jpa:
+        database-platform: org.hibernate.dialect.MySQL5InnoDBDialect
+        properties:
+            hibernate:
+                hbm2ddl:
+                    auto: update
+        show-sql: false

@@ -1,0 +1,9 @@
+### IntelliJ IDEA ###
+.gradle
+.idea
+*.iml
+
+## Running ###
+logs
+build
+out
