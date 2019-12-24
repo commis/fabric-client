@@ -1,31 +1,32 @@
 package com.energy.justsdk.service.impl;
 
-import static org.hyperledger.fabric.sdk.Channel.PeerOptions.createPeerOptions;
-
-import com.energy.justsdk.service.config.NetworkProperty;
-import com.energy.justsdk.model.OrdererUnit;
 import com.energy.justsdk.model.PeerOrg;
 import com.energy.justsdk.model.PeerUnit;
 import com.energy.justsdk.model.UserContext;
+import com.energy.justsdk.service.client.ChannelClient;
 import com.energy.justsdk.service.client.FabricClient;
+import com.energy.justsdk.service.config.NetworkProperty;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.fabric.sdk.Channel;
-import org.hyperledger.fabric.sdk.ChannelConfiguration;
-import org.hyperledger.fabric.sdk.InstallProposalRequest;
+import org.hyperledger.fabric.sdk.HFClient;
 import org.hyperledger.fabric.sdk.InstantiateProposalRequest;
-import org.hyperledger.fabric.sdk.Orderer;
 import org.hyperledger.fabric.sdk.Peer;
+import org.hyperledger.fabric.sdk.ProposalResponse;
 import org.hyperledger.fabric.sdk.UpgradeProposalRequest;
 import org.hyperledger.fabric.sdk.exception.ChaincodeEndorsementPolicyParseException;
-import org.hyperledger.fabric.sdk.exception.InvalidArgumentException;
+import org.hyperledger.fabric.sdk.security.CryptoSuite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 /**
  * 区块链的维护实现接口：创建通道，节点加入通道，部署合约，实例化合约，智能合约升级等功能
@@ -38,37 +39,37 @@ import org.springframework.stereotype.Service;
 public class BlockChainHandler {
 
     @Autowired
-    private ClientHandler clientHandler;
-    private NetworkProperty config;
-
-    @PostConstruct
-    void init() {
-        this.config = clientHandler.getProperty();
-    }
+    private ClientManager clientManager;
 
     /**
-     * rootPath，channelTxPath 路径末尾必须带上目录分隔符
+     * @param rootPath 网络的根路径
      */
-    private void genChannelTx(String rootPath, String channelTxPath, String channelName)
-        throws IOException, InterruptedException {
-        File file;
-        String[] args;
+    private void genChannelTx(String rootPath, String channelName)
+        throws Exception {
+        String networkPath = rootPath + "/network";
+        String configTxGenBin = rootPath + "/bin/configtxgen";
+        String channelTxFile = String.format("%s/channel-artifacts/%s.tx", networkPath, channelName);
+
+        Process process;
         String os = System.getProperty("os.name");
         if (os.startsWith("win") || os.startsWith("Win")) {
-            file = new File(rootPath.replace("/", "\\"));
-            args = new String[]{"cmd", "/c", "configtxgen",
-                "-profile", config.getProfiles(),
-                "-outputCreateChannelTx", channelTxPath.replace("/", "\\") + channelName + ".tx",
+            File dir = new File(networkPath.replace("/", "\\"));
+            String[] args = {"cmd", "/c", configTxGenBin.replace("/", "\\"),
+                "-profile", clientManager.getProperty().getProfile(),
+                "-outputCreateChannelTx", channelTxFile.replace("/", "\\"),
                 "-channelID", channelName};
+            log.info("execute: {}", String.join(" ", args));
+            process = Runtime.getRuntime().exec(args, null, dir);
         } else {
-            file = new File(rootPath);
-            args = new String[]{rootPath + "/bin/configtxgen",
-                "-profile", config.getProfiles(),
-                "-outputCreateChannelTx", channelTxPath + channelName + ".tx",
+            File dir = new File(networkPath);
+            String[] args = {configTxGenBin,
+                "-profile", clientManager.getProperty().getProfile(),
+                "-outputCreateChannelTx", channelTxFile,
                 "-channelID", channelName};
+            log.info("execute: {}", String.join(" ", args));
+            process = Runtime.getRuntime().exec(args, null, dir);
         }
 
-        Process process = Runtime.getRuntime().exec(args, null, file);
         //0: 代表正常退出
         if (process.waitFor() == 0) {
             log.info("Create {}.tx success", channelName);
@@ -76,18 +77,23 @@ public class BlockChainHandler {
             log.info("Create {}.tx failed, exit code is {}", channelName, process.exitValue());
         }
         process.destroy();
+
+        File channelTx = new File(channelTxFile);
+        if (!channelTx.exists()) {
+            throw new Exception(String.format("the channel config file %s is not exist.", channelTxFile));
+        }
     }
 
     public Set<String> queryAllChannels() throws Exception {
         Set<String> allChannel = new HashSet<>();
         try {
-            /*HFClient client = handle.getClient();
-            List<PeerOrg> peerOrgsList = handle.getConf().getPeerOrgsList();
+            HFClient client = HFClient.createNewInstance();
+            client.setCryptoSuite(CryptoSuite.Factory.getCryptoSuite());
+            List<PeerOrg> peerOrgsList = clientManager.getProperty().getPeerOrgsList();
             for (PeerOrg peerOrg : peerOrgsList) {
-                String peerOrgDomainName = peerOrg.getPeers().get(0).getPeerDomainName();
-                client.setUserContext(handle.getConf().enrollAdminUser(peerOrg.getOrgMspId(), peerOrgDomainName));
+                client.setUserContext(clientManager.getProperty().getEnrollAdminUser(peerOrg));
                 allChannel.addAll(queryPeerChannel(peerOrg.getPeers(), client));
-            }*/
+            }
             return allChannel;
         } catch (Exception e) {
             log.error("BlockChainHandler | QueryAllChannels | {}", e.getMessage());
@@ -95,14 +101,14 @@ public class BlockChainHandler {
         }
     }
 
-    /*private Set<String> queryPeerChannel(List<PeerUnit> peers, HFClient client) {
+    private Set<String> queryPeerChannel(List<PeerUnit> peers, HFClient client) {
         Set<String> allChannel = new HashSet<>();
         for (PeerUnit peerUnit : peers) {
             try {
                 Peer peer = client.newPeer(
                     peerUnit.getPeerName(),
                     peerUnit.getPeerUrl(),
-                    handle.getConf().getPeerProperties(peerUnit.getPeerName()));
+                    clientManager.getProperty().getPeerProperties(peerUnit.getPeerName()));
                 Set<String> channels = client.queryChannels(peer);
                 if (!ObjectUtils.isEmpty(channels)) {
                     allChannel.addAll(channels);
@@ -112,179 +118,101 @@ public class BlockChainHandler {
             }
         }
         return allChannel;
-    }*/
+    }
 
-    public Channel createChannel(String channelName) throws Exception {
+    public String createChannel(String channelName) throws Exception {
         log.info("Running create new channel:{}", channelName);
-        String path = config.getConfigPath() + "/conf";
-        String channelTxPath = path + "/network/channel-artifacts/";
-        genChannelTx(path, channelTxPath, channelName);
-
-        File channelConfigurationFile = new File(channelTxPath + channelName + ".tx");
-        if (!channelConfigurationFile.exists()) {
-            throw new Exception(
-                String.format("the channel config file %s is not exist.",
-                    channelConfigurationFile.getName()));
+        if (clientManager.isExist(channelName)) {
+            throw new Exception(String.format("The channel %s is exist.", channelName));
         }
 
-        PeerOrg adminPeerOrg = config.getChaincodeAdminPeerOrg(null);
-        OrdererUnit ordererUnit = config.getChaincodeOrderUnit();
-        UserContext orgAdmin = config.getEnrollAdminUser(adminPeerOrg);
+        NetworkProperty property = clientManager.getProperty();
+        genChannelTx(property.getNetworkPath(), channelName);
+
+        String chaincodePeerName = property.getChaincodeInfo().getChaincodePeerName();
+        PeerOrg adminPeerOrg = property.getChaincodeAdminPeerOrg(chaincodePeerName);
+        UserContext orgAdmin = property.getEnrollAdminUser(adminPeerOrg);
 
         FabricClient fabClient = new FabricClient(orgAdmin);
-        Orderer orderer = fabClient.getInstance().newOrderer(ordererUnit.getOrdererName(), ordererUnit.getOrdererUrl());
-        ChannelConfiguration channelConfiguration = new ChannelConfiguration(channelConfigurationFile);
-        byte[] signature = fabClient.getInstance()
-            .getChannelConfigurationSignature(channelConfiguration, orgAdmin);
-        Channel newChannel = fabClient.getInstance().newChannel(channelName, orderer, channelConfiguration, signature);
+        Channel newChannel = fabClient.createChannel(property, channelName);
+        for (PeerUnit peer : adminPeerOrg.getPeers()) {
+            if (peer.getPeerName().equals(chaincodePeerName)) {
+                newChannel.addPeer(fabClient.getInstance().newPeer(
+                    peer.getPeerName(),
+                    peer.getPeerUrl(),
+                    property.getPeerProperties(peer.getPeerName())));
+            }
+        }
+        clientManager.addChannelClient(fabClient, channelName, newChannel);
 
-        newChannel.addOrderer(orderer);
-        newChannel.initialize();
-        return newChannel;
+        return newChannel.toString();
     }
 
     public void peerJoinChannel(String peerName, String channelName) throws Exception {
         log.info("Running peer: {} join channel:{}", peerName, channelName);
-        try {
-            PeerOrg adminPeerOrg = config.getChaincodeAdminPeerOrg(null);
-            UserContext orgAdmin = config.getEnrollAdminUser(adminPeerOrg);
-            FabricClient fabClient = new FabricClient(orgAdmin);
-
-            Channel channel = clientHandler.reconstructChannel(fabClient, channelName, peerName);
-            Orderer orderer = channel.getOrderers().iterator().next();
-            for (PeerOrg peerOrg : config.getPeerOrgsList()) {
-                for (PeerUnit peerUnit : peerOrg.getPeers()) {
-                    if (peerName.equals(peerUnit.getPeerName())) {
-                        Peer peer = fabClient.getInstance().newPeer(
-                            peerUnit.getPeerName(),
-                            peerUnit.getPeerUrl(),
-                            config.getPeerProperties(peerUnit.getPeerName()));
-                        channel.joinPeer(orderer, peer, createPeerOptions());
-                        break;
-                    }
-                }
-            }
-
-            if (!channel.isInitialized()) {
-                try {
-                    channel.initialize();
-                } catch (Exception e) {
-                    log.error(e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.error("BlockChainHandler | peerJoinChannel | {}", e.getMessage());
-            throw e;
+        if (!clientManager.isExist(channelName)) {
+            throw new Exception(String.format("The channel %s is not exist.", channelName));
         }
+
+        ChannelClient channelClient = clientManager.getChannelClient(channelName, peerName);
+        NetworkProperty property = clientManager.getProperty();
+        PeerUnit peerUnit = property.getChaincodePeer(peerName);
+        channelClient.getChannel().addPeer(
+            channelClient.getFabClient().getInstance().newPeer(
+                peerUnit.getPeerName(),
+                peerUnit.getPeerUrl(),
+                property.getPeerProperties(peerUnit.getPeerName())));
+
+        channelClient.getChannel().initialize();
     }
 
     /**
      * 安装智能合约接口
      *
-     * @param ordererName orderer名称
      * @param peerName peer节点名称
      * @param chaincodeName 合约名称
-     * @param chaincodeType 合约类型
      * @param version 合约版本
-     * @param chaincodePath 合约相对路径，相对于fixture/chaincode/之后的相对路径
+     * @param chaincodePath 合约相对路径，相对于/chaincode/之后的相对路径
      * @return 合约安装的结果(成功或失败)
      * @throws Exception 出现错误的异常
      */
-    public String installChaincode(String ordererName, String peerName, String chaincodeName, String chaincodeType,
-        String version, String chaincodePath) throws Exception {
+    public String installChaincode(String peerName, String chaincodeName, String version, String chaincodePath)
+        throws Exception {
         log.info("Running install chaincode on {}", peerName);
-        /*Collection<ProposalResponse> successful = new ArrayList<>();
+        NetworkProperty property = clientManager.getProperty();
+        ChannelClient channelClient = clientManager.getChannelClient(
+            property.getChaincodeInfo().getChaincodeChannelName(), peerName);
+
+        PeerUnit peerUnit = property.getChaincodePeer(peerName);
+        List<Peer> peers = Arrays.asList(
+            channelClient.getFabClient().getInstance().newPeer(
+                peerUnit.getPeerName(),
+                peerUnit.getPeerUrl(),
+                property.getPeerProperties(peerUnit.getPeerName()))
+        );
+
+        Collection<ProposalResponse> proposalResponses = channelClient.getFabClient()
+            .deployChainCode(chaincodeName, chaincodePath, version, peers);
+
+        Collection<ProposalResponse> successful = new ArrayList<>();
         Collection<ProposalResponse> failed = new ArrayList<>();
-        int numInstallProposal = 0;
-        try {
-            HFClient client = handle.getClient();
-            String domainName = handle.getConf().getDomainName(peerName);
-            client.setUserContext(handle.getConf().enrollAdminUser(ordererName, domainName));
-            InstallProposalRequest installProposalRequest = getInstallProposalRequest(chaincodeName,
-                chaincodeType, version, chaincodePath);
-            Set<Peer> peerSet = new HashSet<>();
-            for (PeerOrg peerOrg : handle.getConf().getPeerOrgsList()) {
-                List<PeerUnit> peers = peerOrg.getPeers();
-                for (PeerUnit peerUnit : peers) {
-                    if (peerName.equals(peerUnit.getPeerName())) {
-                        Peer peer = client.newPeer(peerUnit.getPeerName(), peerUnit.getPeerUrl(),
-                            handle.getConf().getPeerProperties(peerUnit.getPeerName()));
-                        peerSet.add(peer);
-                    }
-                }
-            }
-            Collection<ProposalResponse> proposalResponses = client
-                .sendInstallProposal(installProposalRequest, peerSet);
-            for (ProposalResponse pr : proposalResponses) {
-                if (pr.getStatus() == ProposalResponse.Status.SUCCESS) {
-                    log.debug("Successful install proposal response Txid: {} from peer {}",
-                        pr.getTransactionID(), pr.getPeer().getName());
-                    successful.add(pr);
-                } else {
-                    failed.add(pr);
-                }
-            }
-            if (failed.size() > 0) {
-                ProposalResponse next = failed.iterator().next();
-                String errMsg = "Not enough endorsers for install:" + successful.size() + ". " + next.getMessage();
-                throw new Exception(errMsg);
-            }
-            log.info("Received {} install proposal response.Successful+Verified: {}.Failed: {}",
-                numInstallProposal, successful.size(), failed.size());
-            return "Chaincode installed Successfully";
-        } catch (Exception e) {
-            log.error("BlockChainHandler | installChaincode |", e);
-            throw new Exception("chaincode installtion failed", e);
-        }*/
-        return "";
-    }
-
-    private InstallProposalRequest getInstallProposalRequest(String chaincodeName, String chaincodeType,
-        String version, String chaincodePath) throws InvalidArgumentException {
-        /*ChaincodeID chaincodeID = ChaincodeID.newBuilder()
-            .setName(chaincodeName)
-            .setVersion(version)
-            .setPath(chaincodePath)
-            .build();
-        log.info("Creating install proposal");
-        InstallProposalRequest installProposalRequest = handle.getClient().newInstallProposalRequest();
-        installProposalRequest.setChaincodeID(chaincodeID);
-        String meta_inf_path = handle.getConf().getConfigPath() + "/chaincode/" + chaincodeID.getPath();
-        boolean existMetaFile = isExistMetaFile(meta_inf_path);
-        if (existMetaFile) {
-            File metaFile = new File(meta_inf_path);
-            if (metaFile.exists() && metaFile.isDirectory()) {
-                //add indexes,if the directory exists the META-INF then add ,else no add
-                installProposalRequest.setChaincodeMetaInfLocation(metaFile);
+        for (ProposalResponse pr : proposalResponses) {
+            if (pr.getStatus() == ProposalResponse.Status.SUCCESS) {
+                log.debug("Successful install proposal response Txid: {} from peer {}",
+                    pr.getTransactionID(), pr.getPeer().getName());
+                successful.add(pr);
+            } else {
+                failed.add(pr);
             }
         }
-        installProposalRequest.setChaincodeVersion(chaincodeID.getVersion());
-        String lowerChaincodeType = chaincodeType.toLowerCase();
-        if (lowerChaincodeType.equals("go")) {
-            installProposalRequest.setChaincodeLanguage(TransactionRequest.Type.GO_LANG);
-            installProposalRequest.setChaincodeSourceLocation(Paths.get(handle.getConf().getConfigPath()).toFile());
+        if (failed.size() > 0) {
+            ProposalResponse next = failed.iterator().next();
+            String errMsg = "Not enough endorsers for install:" + successful.size() + ". " + next.getMessage();
+            throw new Exception(errMsg);
         }
-        if (lowerChaincodeType.equals("java")) {
-            installProposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA);
-            String ccPath = handle.getConf().getConfigPath() + "/conf/chaincode/" + chaincodePath;
-            installProposalRequest.setChaincodeSourceLocation(Paths.get(ccPath).toFile());
-        }
-        return installProposalRequest;*/
-        return null;
-    }
-
-    private boolean isExistMetaFile(String path) {
-        boolean flag = false;
-        File file = new File(path);
-        if (file.exists() && file.isDirectory()) {
-            File[] files = file.listFiles();
-            for (File everyFile : files) {
-                if ("META-INF".equals(everyFile.getName())) {
-                    flag = true;
-                }
-            }
-        }
-        return flag;
+        log.info("Received {} install proposal response.Successful+Verified: {}.Failed: {}",
+            peers.size(), successful.size(), failed.size());
+        return "Chaincode installed Successfully";
     }
 
     public Map<String, String> instantieteChaincode(String channelName, String ordererName, String peerName,

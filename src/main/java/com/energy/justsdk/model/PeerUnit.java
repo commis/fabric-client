@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PeerUnit {
 
+    private String domainName;
     private String peerName;
-    private String peerDomainName;
     private String peerUrl;
 }

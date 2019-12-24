@@ -35,14 +35,14 @@ public class ClientController {
     })
     @GetMapping(value = "/block")
     public Map<String, Object> queryBlock(
-        @RequestParam Integer size) {
+        @RequestParam(defaultValue = "10") Integer size) {
         int blockSize = (size == null || size > 20) ? 20 : size;
         return clientService.queryBlock(blockSize);
     }
 
     @ApiOperation(value = "查询交易", notes = "查询区块链交易数据。")
     @ApiImplicitParams({
-        @ApiImplicitParam(name = "txId", value = "节点名称", required = true, dataType = "string")
+        @ApiImplicitParam(name = "txId", value = "交易ID", required = true, dataType = "string")
     })
     @GetMapping(value = "/transaction")
     public Map<String, Object> queryTransaction(

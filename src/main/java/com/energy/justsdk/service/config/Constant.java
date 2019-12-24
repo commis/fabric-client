@@ -8,8 +8,6 @@ public class Constant {
 
     public static final String ISTLS = "istls";
     public static final String PROFILES = "profiles";
-    public static final String ORDERERS = "orderers";
-    public static final String ORG = "org";
     public static final String CHAINCODENAME = "chaincodeName";
     public static final String CHAINCODEPEERNAME = "chaincodePeerName";
     public static final String CHAINCODECHANNELNAME = "chaincodeChannelName";
@@ -17,7 +15,8 @@ public class Constant {
     public static final String CHAINCODEPATH = "chaincodePath";
     public static final String CHAINCODEVERSION = "chaincodeVersion";
     public static final String JOINEDPEER = "joinedpeer";
-
-    public static final String ADMIN = "admin";
-    public static final String ADMIN_PASSWORD = "adminpw";
+    public static final String ORDERERS = "orderers";
+    public static final String ORG = "org";
+    public static final String CA = "ca";
+    public static final String USERADMIN = "Admin";
 }

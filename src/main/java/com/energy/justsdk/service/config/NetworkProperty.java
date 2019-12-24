@@ -6,7 +6,6 @@ import com.energy.justsdk.model.OrdererUnit;
 import com.energy.justsdk.model.PeerOrg;
 import com.energy.justsdk.model.PeerUnit;
 import com.energy.justsdk.model.UserContext;
-import com.energy.justsdk.service.config.Constant;
 import com.energy.justsdk.util.UserContextUtil;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,19 +30,19 @@ import org.springframework.util.StringUtils;
 public class NetworkProperty {
 
     private boolean isTls;
-    private String configPath;
-    private String profiles;
+    private String networkPath;
+    private String profile;
     private List<PeerUnit> joinedPeers = new ArrayList<>();
     private ChaincodeInfo chaincodeInfo = new ChaincodeInfo();
     private List<OrdererUnit> ordererList = new ArrayList<>();
     private List<PeerOrg> peerOrgsList = new ArrayList<>();
 
-    public NetworkProperty(String configPath) throws IOException {
-        this.configPath = configPath;
+    public NetworkProperty(String configPath, String networkPath) throws IOException {
+        this.networkPath = networkPath;
         Properties properties = new Properties();
         properties.load(new FileInputStream(configPath + "/sdk.properties"));
         this.isTls = "true".equals(getPropertyValue(properties, Constant.ISTLS));
-        this.profiles = getPropertyValue(properties, Constant.PROFILES);
+        this.profile = getPropertyValue(properties, Constant.PROFILES);
         this.chaincodeInfo.setChaincodeName(getPropertyValue(properties, Constant.CHAINCODENAME));
         this.chaincodeInfo.setChaincodePeerName(getPropertyValue(properties, Constant.CHAINCODEPEERNAME));
         this.chaincodeInfo.setChaincodeChannelName(getPropertyValue(properties, Constant.CHAINCODECHANNELNAME));
@@ -61,7 +60,7 @@ public class NetworkProperty {
     }
 
     /**
-     * @param str 格式：domainname=example.com,orderername=org1.example.com,ordererlocation=grpc://x.x.x.1:7050
+     * @param str 格式：domainname=example.com,orderername=org1.example.com,ordererurl=grpc://x.x.x.1:7050
      */
     private OrdererUnit parseOrderer(String str) {
         if (!StringUtils.isEmpty(str)) {
@@ -69,13 +68,16 @@ public class NetworkProperty {
             String[] split = str.split(",");
             for (String s : split) {
                 String[] kv = s.split("=");
+                if ("mspid".equals(kv[0])) {
+                    orderer.setMspid(kv[1]);
+                }
                 if ("domainname".equals(kv[0])) {
                     orderer.setDomainName(kv[1]);
                 }
                 if ("orderername".equals(kv[0])) {
                     orderer.setOrdererName(kv[1]);
                 }
-                if ("ordererlocation".equals(kv[0])) {
+                if ("ordererurl".equals(kv[0])) {
                     if (isTls()) {
                         kv[1] = kv[1].replaceFirst("^grpc://", "grpcs://");
                     }
@@ -110,7 +112,7 @@ public class NetworkProperty {
     }
 
     /**
-     * @param str 格式：peerdomainname=org1,peername=peer0.org1,peerlocation=grpc://x.x.x.1:7051
+     * @param str 格式：domainname=org1,peername=peer0.org1,peerurl=grpc://x.x.x.1:7051
      */
     private PeerUnit parsePeer(String str) {
         if (!StringUtils.isEmpty(str)) {
@@ -118,13 +120,13 @@ public class NetworkProperty {
             String[] split = str.split(",");
             for (String s : split) {
                 String[] kv = s.split("=");
-                if ("peerdomainname".equals(kv[0])) {
-                    peer.setPeerDomainName(kv[1]);
+                if ("domainname".equals(kv[0])) {
+                    peer.setDomainName(kv[1]);
                 }
                 if ("peername".equals(kv[0])) {
                     peer.setPeerName(kv[1]);
                 }
-                if ("peerlocation".equals(kv[0])) {
+                if ("peerurl".equals(kv[0])) {
                     if (isTls()) {
                         kv[1] = kv[1].replaceFirst("^grpc://", "grpcs://");
                     }
@@ -228,7 +230,7 @@ public class NetworkProperty {
     }
 
     private Properties getEndpointProperties(final NetworkNodeEnum type, String name) {
-        String path = configPath + "/conf/network/crypto-config";
+        String path = networkPath + "/network/crypto-config";
         final String domainName = getDomainName(name);
         File cert = Paths.get(path, "/ordererOrganizations".replace("orderer", type.name()),
             domainName, type + "s", name, "tls/server.crt").toFile();
@@ -263,15 +265,15 @@ public class NetworkProperty {
     public UserContext getEnrollAdminUser(PeerOrg adminPeerOrg) throws Exception {
         String domainName = getDomainName(getChaincodeInfo().getChaincodePeerName());
         String peerMspPath = String.format(
-            "%s/conf/network/crypto-config/peerOrganizations/%s/users/Admin@%s/msp/",
-            configPath, domainName, domainName);
+            "%s/network/crypto-config/peerOrganizations/%s/users/Admin@%s/msp/",
+            networkPath, domainName, domainName);
         File adminPkFile = findFileSk(Paths.get(String.format("%s/keystore", peerMspPath)).toFile());
         File adminCertFile = Paths.get(String.format("%s/signcerts/Admin@%s-cert.pem", peerMspPath, domainName))
             .toFile();
 
         Enrollment enrollOrgAdmin = UserContextUtil.getEnrollment(adminPkFile, adminCertFile);
         UserContext adminUser = new UserContext();
-        adminUser.setName(Constant.ADMIN);
+        adminUser.setName(Constant.USERADMIN);
         adminUser.setAffiliation(adminPeerOrg.getOrgName());
         adminUser.setMspid(adminPeerOrg.getOrgMspId());
         adminUser.setEnrollment(enrollOrgAdmin);
@@ -310,5 +312,16 @@ public class NetworkProperty {
             }
         }
         throw new Exception(String.format("Can't find orderer for %s", chaincodeOrdererName));
+    }
+
+    public PeerUnit getChaincodePeer(String peerName) throws Exception {
+        for (PeerOrg peerOrg : peerOrgsList) {
+            for (PeerUnit peer : peerOrg.getPeers()) {
+                if (peer.getPeerName().equals(peerName)) {
+                    return peer;
+                }
+            }
+        }
+        throw new Exception(String.format("", peerName));
     }
 }

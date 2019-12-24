@@ -59,7 +59,7 @@ public class ChannelClient {
         tm2.put("result", ":)".getBytes(UTF_8));
         request.setTransientMap(tm2);
 
-        Collection<ProposalResponse> response = channel.queryByChaincode(request, channel.getPeers());
+        Collection<ProposalResponse> response = channel.queryByChaincode(request);
         return response;
     }
 
@@ -88,9 +88,8 @@ public class ChannelClient {
         Collection<ProposalResponse> response = channel.sendTransactionProposal(request, channel.getPeers());
         for (ProposalResponse pres : response) {
             String stringResponse = new String(pres.getChaincodeActionResponsePayload());
-            log.info("Transaction proposal on channel {} {} {} with transaction id:{}",
-                channel.getName(), pres.getMessage(), pres.getStatus(), pres.getTransactionID());
-            log.info(stringResponse);
+            log.info("Transaction proposal on channel {} {} with transaction id:{}, payload: {}",
+                channel.getName(), pres.getStatus(), pres.getTransactionID(), stringResponse);
         }
         return response;
     }

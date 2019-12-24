@@ -1,5 +1,6 @@
 server:
     port: 12000
+    network: /home/developCode/GoProjects/src/github.com/commis/fabric-network
 swagger:
   enabled: true
   title: "Fabric Client Application"

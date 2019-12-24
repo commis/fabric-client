@@ -54,31 +54,25 @@ public class BlockChainController {
         @ApiImplicitParam(name = "channelName", value = "函数名", required = true, dataType = "string")
     })
     @PostMapping(value = "/channels")
-    public Channel createChannel(
+    public String createChannel(
         @RequestParam String channelName) {
         return blockChainService.createChannel(channelName);
     }
 
     @ApiOperation(value = "安装智能合约", notes = "在区块链上安装智能合约。")
     @ApiImplicitParams({
-        @ApiImplicitParam(name = "ordererName", value = "orderer名称", required = true, dataType = "string"),
-        @ApiImplicitParam(name = "peerName", value = "节点名称", required = true, dataType = "string"),
+        @ApiImplicitParam(name = "peerName", value = "节点全名", required = true, dataType = "string"),
         @ApiImplicitParam(name = "chaincodeName", value = "合约名称", required = true, dataType = "string"),
-        @ApiImplicitParam(name = "chaincodeType", value = "合约代码类型：Java,Go", required = true, dataType = "string"),
         @ApiImplicitParam(name = "version", value = "合约版本", required = true, dataType = "string"),
         @ApiImplicitParam(name = "chaincodePath", value = "合约代码路径", required = true, dataType = "string")
     })
     @PostMapping(value = "/peers/{peerName}/chaincodes/{chaincodeName}/{version}")
     public String installChaincode(
-        @RequestParam String ordererName,
         @PathVariable String peerName,
         @PathVariable String chaincodeName,
-        @RequestParam String chaincodeType,
         @PathVariable String version,
         @RequestParam String chaincodePath) {
-        /*return blockChainService.installChaincode(ordererName, peerName,
-            chaincodeName, chaincodeType, version, chaincodePath);*/
-        return null;
+        return blockChainService.installChaincode(peerName, chaincodeName, version, chaincodePath);
     }
 
     @ApiOperation(value = "实例化智能合约", notes = "实例化区块链节点上安装的智能合约。")

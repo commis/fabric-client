@@ -2,7 +2,6 @@ package com.energy.justsdk.service;
 
 import java.util.Map;
 import java.util.Set;
-import org.hyperledger.fabric.sdk.Channel;
 
 /**
  * 区块链维护对外提供接口：创建通道，节点加入通道，部署合约，合约实例化，合约升级等
@@ -25,7 +24,7 @@ public interface BlockChainService {
      * @param channelName 通道名称
      * @return 返回通道信息
      */
-    Channel createChannel(String channelName);
+    String createChannel(String channelName);
 
     /**
      * 将Peer加入到通道
@@ -38,15 +37,12 @@ public interface BlockChainService {
     /**
      * 在区块链上安装智能合约
      *
-     * @param ordererName orderer名称
      * @param peerName 节点名称
      * @param chaincodeName 智能合约名称
-     * @param chaincodeType 智能合约类型：Java, Go
      * @param version 智能合约版本
      * @param chaincodePath 智能合约路径，相对路径
      */
-    String installChaincode(String ordererName, String peerName,
-        String chaincodeName, String chaincodeType, String version, String chaincodePath);
+    String installChaincode(String peerName, String chaincodeName, String version, String chaincodePath);
 
     /**
      * 实例化节点智能合约

@@ -30,7 +30,7 @@ public class BlockChainServiceImpl implements BlockChainService {
     }
 
     @Override
-    public Channel createChannel(String channelName) {
+    public String createChannel(String channelName) {
         try {
             return blockChainHandler.createChannel(channelName);
         } catch (Exception e) {
@@ -49,11 +49,9 @@ public class BlockChainServiceImpl implements BlockChainService {
     }
 
     @Override
-    public String installChaincode(String ordererName, String peerName,
-        String chaincodeName, String chaincodeType, String version, String chaincodePath) {
+    public String installChaincode(String peerName, String chaincodeName, String version, String chaincodePath) {
         try {
-            return blockChainHandler.installChaincode(ordererName, peerName,
-                chaincodeName, chaincodeType, version, chaincodePath);
+            return blockChainHandler.installChaincode(peerName, chaincodeName, version, chaincodePath);
         } catch (Exception e) {
             log.error("install chaincode: ", e);
         }
