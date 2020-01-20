@@ -31,12 +31,12 @@ public class ClientController {
 
     @ApiOperation(value = "查询区块", notes = "查询区块链区块数据。")
     @ApiImplicitParams({
-        @ApiImplicitParam(name = "size", value = "区块数量最大值为20", defaultValue = "10", required = true, dataType = "int")
+        @ApiImplicitParam(name = "size", value = "区块数最大值20", defaultValue = "10", required = true, dataType = "int")
     })
     @GetMapping(value = "/block")
     public Map<String, Object> queryBlock(
-        @RequestParam(defaultValue = "10") Integer size) {
-        int blockSize = (size == null || size > 20) ? 20 : size;
+        @RequestParam Integer size) {
+        int blockSize = (size > 20) ? 20 : size;
         return clientService.queryBlock(blockSize);
     }
 

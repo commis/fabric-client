@@ -26,7 +26,7 @@ import org.springframework.util.StringUtils;
  * @date 2019-12-07
  */
 @Slf4j
-public class NetworkBlockService {
+public class FabricBlockService {
 
     public Map<String, Object> getResultJson(JSONArray channelBlockInfos) {
         Map<String, Object> map = new HashMap<>();

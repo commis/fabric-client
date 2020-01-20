@@ -1,6 +1,7 @@
 server:
     port: 12000
-    network: /home/developCode/GoProjects/src/github.com/commis/fabric-network
+#   如果使用外部路径数据，目录指向fixture，该目录下面要有sdk.properties文件
+    network: /home/developCode/GoProjects/src/github.com/commis/fabric-network/fabric-sdk-config.yaml
 swagger:
   enabled: true
   title: "Fabric Client Application"

@@ -7,3 +7,5 @@
 logs
 build
 out
+
+libs/fabric*.jar

@@ -1,11 +1,10 @@
 package com.energy.justsdk.service.impl;
 
-import com.energy.justsdk.model.ChaincodeInfo;
+import com.energy.justsdk.model.FabricResult;
 import com.energy.justsdk.service.ClientService;
-import com.energy.justsdk.service.config.NetworkProperty;
+import com.energy.justsdk.service.client.FabricHelper;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,44 +15,35 @@ import org.springframework.stereotype.Service;
 @Service
 public class ClientServiceImpl implements ClientService {
 
-    @Autowired
-    private ClientHandler handle;
-
     @Override
     public Map<String, Object> queryBlock(int blockSize) {
-        NetworkProperty property = handle.getClientManager().getProperty();
-        ChaincodeInfo chaincodeInfo = property.getChaincodeInfo();
-        String channelName = chaincodeInfo.getChaincodeChannelName();
-        String peerName = chaincodeInfo.getChaincodePeerName();
-        return handle.queryBlock(channelName, peerName, blockSize);
+        FabricHelper helper = FabricHelper.getInstance();
+        FabricResult result = helper.queryBlock(blockSize);
+
+        return result.getResponse();
     }
 
     @Override
     public Map<String, Object> queryTransaction(String txId) {
-        NetworkProperty property = handle.getClientManager().getProperty();
-        ChaincodeInfo chaincodeInfo = property.getChaincodeInfo();
-        String channelName = chaincodeInfo.getChaincodeChannelName();
-        String peerName = chaincodeInfo.getChaincodePeerName();
-        return handle.queryTransaction(channelName, peerName, txId);
+        FabricHelper helper = FabricHelper.getInstance();
+        FabricResult result = helper.queryTransactionByID(txId);
+
+        return result.getResponse();
     }
 
     @Override
     public Map<String, Object> query(String fcn, String[] args) {
-        NetworkProperty property = handle.getClientManager().getProperty();
-        ChaincodeInfo chaincodeInfo = property.getChaincodeInfo();
-        String channelName = chaincodeInfo.getChaincodeChannelName();
-        String peerName = chaincodeInfo.getChaincodePeerName();
-        String chaincodeName = chaincodeInfo.getChaincodeName();
-        return handle.query(channelName, peerName, chaincodeName, fcn, args);
+        FabricHelper helper = FabricHelper.getInstance();
+        FabricResult result = helper.queryByChainCode(fcn, args);
+
+        return result.getResponse();
     }
 
     @Override
     public Map<String, Object> invoke(String fcn, String[] args) {
-        NetworkProperty property = handle.getClientManager().getProperty();
-        ChaincodeInfo chaincodeInfo = property.getChaincodeInfo();
-        String channelName = chaincodeInfo.getChaincodeChannelName();
-        String peerName = chaincodeInfo.getChaincodePeerName();
-        String chaincodeName = chaincodeInfo.getChaincodeName();
-        return handle.invoke(channelName, peerName, chaincodeName, fcn, args);
+        FabricHelper helper = FabricHelper.getInstance();
+        FabricResult result = helper.invokeByChainCode(fcn, args);
+
+        return result.getResponse();
     }
 }

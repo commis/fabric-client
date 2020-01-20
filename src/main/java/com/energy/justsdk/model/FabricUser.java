@@ -13,16 +13,26 @@ import org.hyperledger.fabric.sdk.User;
  */
 @Setter
 @NoArgsConstructor
-public class UserContext implements User, Serializable {
+public class FabricUser implements User, Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private String name;
+    private String enrollSecret;
     private String mspid;
     private Enrollment enrollment;
     private Set<String> roles;
     private String account;
     private String affiliation;
+
+    public FabricUser(String accessKey) {
+        this.name = accessKey;
+        this.mspid = accessKey + "MSP";
+    }
+
+    public String getEnrollSecret() {
+        return enrollSecret;
+    }
 
     @Override
     public String getName() {

@@ -1,0 +1,211 @@
+description: "The network to be in if you want to stay in the global trade business"
+name: "global-trade-network"
+version: 1.0.0
+
+client:
+  #  需要和下面organizations里面的组织名称对应上，客户端访问区块链使用
+  organization: Org1
+  
+  logging:
+    level: info
+  
+  peer:
+    timeout:
+      connection: 10s
+      queryResponse: 45s
+      executeTxResponse: 30s
+  eventService:
+    timeout:
+      connection: 50s
+      registrationResponse: 50s
+  orderer:
+    timeout:
+      connection: 5s
+      response: 45s
+  
+  cryptoconfig:
+    path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network
+  
+  credentialStore:
+    path: "/tmp/hfc-kvs"
+    
+    cryptoStore:
+      path: /tmp/msp
+    
+    wallet: wallet-name
+
+  BCCSP:
+    security:
+      enabled: true
+#      SW/GM SHA2/GMSM2
+      default:
+        provider: "SW"
+      hashAlgorithm: "SHA2"
+      softVerify: true
+      ephemeral: false
+      level: 256
+
+channels:
+  mychannel:
+    orderers:
+      - orderer.example.com
+    
+    peers:
+      peer0.org1.example.com:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+      peer1.org1.example.com:
+        endorsingPeer: false
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: false
+      peer0.org2.example.com:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+      peer1.org2.example.com:
+        endorsingPeer: false
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: false
+    chaincodes:
+      - mycc:1.0
+
+organizations:
+  ordererorg:
+    mspid: OrdererMSP
+    cryptoPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp
+    tlsCryptoKeyPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/users/Admin@org1.example.com/tls/client.key
+    tlsCryptoCertPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/users/Admin@org1.example.com/tls/client.crt
+
+    adminPrivateKey:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp/keystore
+    signedCert:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/users/Admin@example.com/msp/signcerts/Admin@example.com-cert.pem
+
+  Org1:
+    mspid: Org1MSP
+    cryptoPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    tlsCryptoKeyPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.key
+    tlsCryptoCertPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/client.crt
+    
+    peers:
+      - peer0.org1.example.com
+      - peer1.org1.example.com
+    
+    certificateAuthorities:
+      - ca-org1
+    
+    adminPrivateKey:
+#      可以是目录也可以是文件，如果是目录，默认会扫描目录使用第一个文件
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore
+    signedCert:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
+  
+  Org2:
+    mspid: Org2MSP
+    cryptoPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    tlsCryptoKeyPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/tls/client.key
+    tlsCryptoCertPath: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/tls/client.crt
+    
+    peers:
+      - peer0.org2.example.com
+      - peer1.org2.example.com
+    
+    certificateAuthorities:
+      - ca-org2
+    
+    adminPrivateKey:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/keystore
+    signedCert:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/signcerts/Admin@org2.example.com-cert.pem
+
+orderers:
+  orderer.example.com:
+    url: grpc://127.0.0.1:7050
+    
+    grpcOptions:
+      sslProvider: openSSL
+      negotiationType: TLS
+      hostnameOverride: orderer.example.com
+      grpc-max-send-message-length: 15
+    
+    tlsCACerts:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
+
+peers:
+  peer0.org1.example.com:
+    url: grpc://127.0.0.1:7051
+    grpcOptions:
+      ssl-target-name-override: peer0.org1.example.com
+      grpc.http2.keepalive_time: 15
+      negotiationType: TLS
+      sslProvider: openSSL
+      hostnameOverride: peer0.org1.example.com
+    tlsCACerts:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/ca.crt
+  
+  peer1.org1.example.com:
+    url: grpc://127.0.0.1:8051
+    grpcOptions:
+      ssl-target-name-override: peer1.org1.example.com
+      grpc.http2.keepalive_time: 15
+      negotiationType: TLS
+      sslProvider: openSSL
+      hostnameOverride: peer1.org1.example.com
+    tlsCACerts:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/tls/ca.crt
+  
+  peer0.org2.example.com:
+    url: grpc://127.0.0.1:9051
+    grpcOptions:
+      ssl-target-name-override: peer0.org2.example.com
+      grpc.http2.keepalive_time: 15
+      negotiationType: TLS
+      sslProvider: openSSL
+      hostnameOverride: peer0.org2.example.com
+    tlsCACerts:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/tls/ca.crt
+  
+  peer1.org2.example.com:
+    url: grpc://127.0.0.1:10051
+    grpcOptions:
+      ssl-target-name-override: peer1.org2.example.com
+      grpc.http2.keepalive_time: 15
+      negotiationType: TLS
+      sslProvider: openSSL
+      hostnameOverride: peer1.org2.example.com
+    tlsCACerts:
+      path: /home/developCode/GoProjects/src/github.com/commis/fabric-network/network/crypto-config/peerOrganizations/org2.example.com/users/Admin@org2.example.com/tls/ca.crt
+
+certificateAuthorities:
+  ca-org1:
+    url: http://127.0.0.1:7054
+    httpOptions:
+      verify: true
+    tlsCACerts:
+      path: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/ca_root.pem
+      client:
+        keyfile: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/client/client_fabric_client-key.pem
+        certfile: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/client/client_fabric_client.pem
+    registrar:
+      enrollId: admin
+      enrollSecret: adminpw
+    caName: ca_peerOrg2
+  
+  ca-org2:
+    url: http://127.0.0.1:8054
+    httpOptions:
+      verify: true
+    tlsCACerts:
+      path: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/ca_root.pem
+      client:
+        keyfile: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/client/client_fabric_client-key.pem
+        certfile: $GOPATH/src/github.com/hyperledger/fabric-sdk-go/test/api-server/tls/fabricca/certs/client/client_fabric_client.pem
+    registrar:
+      enrollId: admin
+      enrollSecret: adminpw
+    caName: ca_peerOrg2
